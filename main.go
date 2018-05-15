@@ -17,23 +17,35 @@ type rabbitMQExecutor struct {
 }
 
 func createRabbitMQExecutor() (*rabbitMQExecutor, error) {
+
+	executor := &rabbitMQExecutor{}
+	if err := executor.connect(); err != nil {
+		return nil, err
+	}
+
+	return executor, nil
+
+}
+
+func (s *rabbitMQExecutor) connect() error {
 	connectionString := viper.GetString("rabbit_host")
 	log.Printf("[rabbitMQExecutor] connecting to rabbit [%s]", connectionString)
 
 	conn, err := amqp.Dial(connectionString)
 	if err != nil {
 		log.Printf("[rabbitMQExecutor] failed connecting to rabbitmq [%s]", connectionString)
-		return nil, err
+		return err
 	}
 
 	ch, err := conn.Channel()
 	if err != nil {
 		log.Printf("[rabbitMQExecutor] failed to open channel")
-		return nil, err
+		return err
 	}
 
-	return &rabbitMQExecutor{conn, ch}, nil
-
+	s.conn = conn
+	s.ch = ch
+	return nil
 }
 
 func fetchConfig(config map[string]string, key string, defaultValue string) string {
@@ -45,10 +57,7 @@ func fetchConfig(config map[string]string, key string, defaultValue string) stri
 	}
 }
 
-func (s *rabbitMQExecutor) Execute(args *dkron.ExecuteRequest) ([]byte, error) {
-	queueName := args.Config["queue_name"]
-	log.Printf("[rabbitMQExecutor] [%s] will publish to queue [%s]\n", args.JobName, queueName)
-
+func (s *rabbitMQExecutor) publish(args *dkron.ExecuteRequest) error {
 	mandatory, err := strconv.ParseBool(fetchConfig(args.Config, "mandatory", "false"))
 	if err != nil {
 		log.Printf("[rabbitMQExecutor] [%s] 'mandatory' have invalid value - %v", args.JobName, err)
@@ -59,7 +68,7 @@ func (s *rabbitMQExecutor) Execute(args *dkron.ExecuteRequest) ([]byte, error) {
 		log.Printf("[rabbitMQExecutor] [%s] 'immediate' have invalid value - %v", args.JobName, err)
 	}
 
-	err = s.ch.Publish(
+	return s.ch.Publish(
 		fetchConfig(args.Config, "exchange", ""),
 		args.Config["queue_name"],
 		mandatory,
@@ -69,6 +78,21 @@ func (s *rabbitMQExecutor) Execute(args *dkron.ExecuteRequest) ([]byte, error) {
 			Body:        []byte(args.Config["payload"]),
 		})
 
+}
+func (s *rabbitMQExecutor) Execute(args *dkron.ExecuteRequest) ([]byte, error) {
+	queueName := args.Config["queue_name"]
+	log.Printf("[rabbitMQExecutor] [%s] will publish to queue [%s]\n", args.JobName, queueName)
+
+	err := s.publish(args)
+	if err == amqp.ErrClosed {
+		log.Printf("[rabbitMQExecutor] [%s] got closed error while trying to publish, trying to reconnect\n", args.JobName)
+		if err = s.connect(); err != nil {
+			log.Printf("[rabbitMQExecutor] [%s] failed to reconnect [%s]\n", args.JobName, err)
+			return []byte(err.Error()), err
+		}
+
+		err = s.publish(args)
+	}
 	if err != nil {
 		return []byte(err.Error()), err
 	}
