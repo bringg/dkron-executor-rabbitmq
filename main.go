@@ -24,7 +24,6 @@ func createRabbitMQExecutor() (*rabbitMQExecutor, error) {
 	}
 
 	return executor, nil
-
 }
 
 func (s *rabbitMQExecutor) connect() error {
@@ -49,12 +48,12 @@ func (s *rabbitMQExecutor) connect() error {
 }
 
 func fetchConfig(config map[string]string, key string, defaultValue string) string {
-	value, ok := config[key]
-	if ok {
+
+	if value, ok := config[key]; ok {
 		return value
-	} else {
-		return defaultValue
 	}
+
+	return defaultValue
 }
 
 func (s *rabbitMQExecutor) publish(args *dkron.ExecuteRequest) error {
