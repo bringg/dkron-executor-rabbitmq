@@ -1,7 +1,7 @@
 # build dkron-executor-rabbitmq
 FROM golang:1.10-alpine AS builder
 
-ARG dkron_version=0.10.1
+ARG dkron_version=0.10.2
 
 # install packages and download binaries
 RUN apk --no-cache add git \

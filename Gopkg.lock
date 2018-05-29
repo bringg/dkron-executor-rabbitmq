@@ -332,8 +332,8 @@
     "dkron",
     "plugin"
   ]
-  revision = "5eae33c31b854fc345651c583866f530ace79223"
-  version = "v0.10.1"
+  revision = "d2eb5174f85bdfe6b33094343651e8d4a6ea5f8b"
+  version = "v0.10.2"
 
 [[projects]]
   branch = "master"
@@ -461,6 +461,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7d6033822829135f9de9fe0027772accc6b0b19f6e29feb7e255b4180f6990f6"
+  inputs-digest = "f922131e927dd73cbd12dfa1ddbacb3ab5f9a8d3524c0ab2283a615e472b1cd3"
   solver-name = "gps-cdcl"
   solver-version = 1
